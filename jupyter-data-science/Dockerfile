@@ -23,27 +23,16 @@ RUN (set -e; \
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     yum install -y yarn nodejs ;\
     pkg install -forge dataframe  ;\
-    pkg load dataframe ;\
     pkg install -forge econometrics  ;\
-    pkg load econometrics ;\
     pkg install -forge financial  ;\
-    pkg load financial ;\
     pkg install -forge general  ;\
-    pkg load general ;\
     pkg install -forge gsl  ;\
-    pkg load gsl ;\
     pkg install -forge io  ;\
-    pkg load io ;\
     pkg install -forge linear-algebra  ;\
-    pkg load linear-algebra ;\
     pkg install -forge miscellaneous  ;\
-    pkg load miscellaneous ;\
     pkg install -forge statistics  ;\
-    pkg load statistics ;\
     pkg install -forge zeromq  ;\
-    pkg load zeromq ;\
     pkg install -forge linear-algebra  ;\
-    pkg load linear-algebra ;\
 )
 
 RUN curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz && \
