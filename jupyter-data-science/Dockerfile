@@ -72,18 +72,9 @@ RUN mkdir /home/$NB_USER/work && \
 WORKDIR $HOME
 RUN chown -R $NB_USER:users /home/$NB_USER/.jupyter
 
-# Setup work directory for backward-compatibility
-RUN fix-permissions /home/$NB_USER
-
 RUN npm cache clean --force && \
     jupyter notebook --generate-config && \
     fix-permissions /home/$NB_USER
-
-EXPOSE 8888
-
-# Configure container startup
-ENTRYPOINT ["/usr/local/bin/tini", "-g", "--"]
-CMD ["start-notebook.sh"]
 
 # Copy local files as late as possible to avoid cache busting
 COPY start.sh /usr/local/bin/
@@ -119,15 +110,19 @@ RUN (set -e; \
 )
 
 RUN mkdir -p /usr/share/doc/R/html/ && chmod -R 777 /usr/share/doc/R
+# Import matplotlib the first time to build the font cache.
+ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
 RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
   fix-permissions /home/$NB_USER
 
-# Switch back to jovyan to avoid accidental container runs as root
-USER $NB_UID
 RUN Rscript -e "install.packages(c('caret', 'RQuantLib', 'devtools', 'htmltools', 'htmlwidgets', 'rmarkdown', 'shiny', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
 RUN Rscript -e "IRkernel::installspec()"
+
+# Switch back to jovyan to avoid accidental container runs as root
+USER $NB_UID
 RUN echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
 
-# Import matplotlib the first time to build the font cache.
-ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
-
+EXPOSE 8888
+# Configure container startup
+ENTRYPOINT ["/usr/local/bin/tini", "-g", "--"]
+CMD ["start-notebook.sh"]
