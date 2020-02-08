@@ -31,9 +31,11 @@ ENV LC_ALL=en_US.UTF-8 \
     NB_UID=$NB_UID \
     NB_GID=$NB_GID \
     HOME=/home/$NB_USER
-
-#RUN localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
-
+RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
+RUN locale-gen en_US.UTF-8
+RUN localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
 # Copy a script that we will use to correct permissions after running certain commands
 COPY fix-permissions /usr/local/bin/fix-permissions
 RUN chmod a+rx /usr/local/bin/fix-permissions
@@ -83,15 +85,6 @@ COPY jupyter_notebook_config.py /etc/jupyter/
 # Fix permissions on /etc/jupyter as root
 USER root
 RUN fix-permissions /etc/jupyter/
-
-# Switch back to jovyan to avoid accidental container runs as root
-USER $NB_UID
-
-# Import matplotlib the first time to build the font cache.
-ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
-RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
-    fix-permissions /home/$NB_USER
-
 RUN cd /tmp && \
     git clone https://github.com/PAIR-code/facets.git && \
     cd facets && \
@@ -115,6 +108,16 @@ RUN (set -e; \
     fix-permissions /home/$NB_USER; \
 )
 
-RUN Rscript -e 'options(repos="https://cloud.r-project.org")'
-RUN Rscript -e "install.packages(c('caret', 'crayon', 'devtools', 'forecast', 'hexbin', 'htmltools', 'htmlwidgets', 'irkernel', 'plyr', 'randomforest', 'rcurl', 'reshape2', 'rmarkdown', 'rsqlite', 'shiny', 'tidyverse','rpy2'))"
-RUN fix-permissions /home/$NB_USER
+RUN chmod -R 777 /usr/share/doc/R
+RUN export LANG=en_US.UTF-8 \
+    export LC_ALL=en_US.UTF-8
+RUN Rscript -e "install.packages(c('caret', 'crayon', 'devtools', 'forecast', 'hexbin', 'htmltools', 'htmlwidgets', 'irkernel', 'plyr', 'randomforest', 'rcurl', 'reshape2', 'rmarkdown', 'rsqlite', 'shiny', 'tidyverse','rpy2'), repos='https://cloud.r-project.org')"
+
+# Switch back to jovyan to avoid accidental container runs as root
+USER $NB_UID
+
+# Import matplotlib the first time to build the font cache.
+ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
+RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
+  fix-permissions /home/$NB_USER
+
