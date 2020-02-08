@@ -29,5 +29,6 @@ stages:
           $(tag)
     - task: Docker@2
       inputs:
-        displayName: Push an image
+        containerRegistry: 'Quay'
+        repository: 'quay.io/dmpe/container-repo'
         command: 'push'
