@@ -14,7 +14,7 @@ RUN (set -ex ;\
 )
 RUN (set -e; \
     dnf install -y R R-devel czmq-devel python*-networkx git tree mlocate jq bzip2 liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget octave octave-devel \
-        tig pandoc python3-devel tzdata unzip nano tcl tk gfortran gcc-gfortran;\
+        tig pandoc python3-devel boost-devel tzdata unzip nano tcl tk gfortran gcc-gfortran;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
     python3 -m pip install numpy scipy matplotlib ipython pandas sympy nose \
         beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib numba \
@@ -22,22 +22,14 @@ RUN (set -e; \
         openpyxl xlsxwriter notebook jupyterhub jupyterlab;\
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     yum install -y yarn nodejs ;\
-    pkg install -forge dataframe  ;\
-    pkg install -forge econometrics  ;\
-    pkg install -forge financial  ;\
-    pkg install -forge general  ;\
-    pkg install -forge gsl  ;\
-    pkg install -forge io  ;\
-    pkg install -forge linear-algebra  ;\
-    pkg install -forge miscellaneous  ;\
-    pkg install -forge statistics  ;\
-    pkg install -forge zeromq  ;\
-    pkg install -forge linear-algebra  ;\
 )
 
-RUN curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz && \
-    tar zxvf blpapi_cpp_3.12.3.1-linux.tar.gz && export BLPAPI_ROOT=~/blpapi_cpp_3.12.3.1 && \
-    pip install --index-url=https://bloomberg.bintray.com/pip/simple blpapi
+RUN cd /tmp && curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz  && \ 
+     tar zxvf blpapi_cpp_3.12.3.1-linux.tar.gz && ls -al
+
+RUN export BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1
+ENV BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1
+RUN pip install --index-url=https://bloomberg.bintray.com/pip/simple blpapi
 
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8 \
@@ -50,9 +42,8 @@ ENV LC_ALL=en_US.UTF-8 \
 RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
-RUN locale-gen en_US.UTF-8
-RUN localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
-RUN echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
+RUN export LANG=en_US.UTF-8 \
+    export LC_ALL=en_US.UTF-8
 
 # Copy a script that we will use to correct permissions after running certain commands
 COPY fix-permissions /usr/local/bin/fix-permissions
@@ -119,7 +110,7 @@ RUN (set -e; \
     # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
     jupyter labextension install @jupyter-widgets/jupyterlab-manager@^1.0.1 --no-build; \
     jupyter labextension install jupyterlab_bokeh --no-build; \
-    jupyter serverextension enable jupyterlab_sql --py --sys-prefix \
+    jupyter serverextension enable jupyterlab_sql --py --sys-prefix; \
     jupyter lab build; \
     npm cache clean --force; \
     rm -rf /home/$NB_USER/.cache/yarn;\
@@ -127,18 +118,16 @@ RUN (set -e; \
     fix-permissions /home/$NB_USER; \
 )
 
-RUN chmod -R 777 /usr/share/doc/R
-RUN export LANG=en_US.UTF-8 \
-    export LC_ALL=en_US.UTF-8
-
-RUN Rscript -e "install.packages(c('caret', 'crayon', 'devtools', 'forecast', 'hexbin', 'htmltools', 'htmlwidgets', 'plyr', 'reshape2', 'rmarkdown', 'shiny', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
-RUN Rscript -e "IRkernel::installspec()"
+RUN mkdir -p /usr/share/doc/R/html/ && chmod -R 777 /usr/share/doc/R
+RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
+  fix-permissions /home/$NB_USER
 
 # Switch back to jovyan to avoid accidental container runs as root
 USER $NB_UID
+RUN Rscript -e "install.packages(c('caret', 'RQuantLib', 'devtools', 'htmltools', 'htmlwidgets', 'rmarkdown', 'shiny', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
+RUN Rscript -e "IRkernel::installspec()"
+RUN echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
 
 # Import matplotlib the first time to build the font cache.
 ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
-RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
-  fix-permissions /home/$NB_USER
 
