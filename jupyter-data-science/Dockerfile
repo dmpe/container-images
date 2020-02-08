@@ -13,7 +13,7 @@ RUN (set -ex ;\
     dnf groupinstall "Development Tools" "Development Libraries" -y; \
 )
 RUN (set -e; \
-    dnf install -y R R-devel czmq-devel python*-networkx git tree mlocate jq bzip2 liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget \
+    dnf install -y R R-devel czmq-devel python*-networkx git tree mlocate jq bzip2 liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget octave octave-devel \
         tig pandoc python3-devel tzdata unzip nano tcl tk gfortran gcc-gfortran;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
     python3 -m pip install numpy scipy matplotlib ipython pandas sympy nose \
@@ -22,6 +22,28 @@ RUN (set -e; \
         openpyxl xlsxwriter notebook jupyterhub jupyterlab;\
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     yum install -y yarn nodejs ;\
+    pkg install -forge dataframe  ;\
+    pkg load dataframe ;\
+    pkg install -forge econometrics  ;\
+    pkg load econometrics ;\
+    pkg install -forge financial  ;\
+    pkg load financial ;\
+    pkg install -forge general  ;\
+    pkg load general ;\
+    pkg install -forge gsl  ;\
+    pkg load gsl ;\
+    pkg install -forge io  ;\
+    pkg load io ;\
+    pkg install -forge linear-algebra  ;\
+    pkg load linear-algebra ;\
+    pkg install -forge miscellaneous  ;\
+    pkg load miscellaneous ;\
+    pkg install -forge statistics  ;\
+    pkg load statistics ;\
+    pkg install -forge zeromq  ;\
+    pkg load zeromq ;\
+    pkg install -forge linear-algebra  ;\
+    pkg load linear-algebra ;\
 )
 
 ENV LC_ALL=en_US.UTF-8 \
@@ -31,11 +53,14 @@ ENV LC_ALL=en_US.UTF-8 \
     NB_UID=$NB_UID \
     NB_GID=$NB_GID \
     HOME=/home/$NB_USER
+
 RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
 RUN locale-gen en_US.UTF-8
 RUN localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
+RUN echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
+
 # Copy a script that we will use to correct permissions after running certain commands
 COPY fix-permissions /usr/local/bin/fix-permissions
 RUN chmod a+rx /usr/local/bin/fix-permissions
@@ -111,7 +136,9 @@ RUN (set -e; \
 RUN chmod -R 777 /usr/share/doc/R
 RUN export LANG=en_US.UTF-8 \
     export LC_ALL=en_US.UTF-8
-RUN Rscript -e "install.packages(c('caret', 'crayon', 'devtools', 'forecast', 'hexbin', 'htmltools', 'htmlwidgets', 'irkernel', 'plyr', 'randomforest', 'rcurl', 'reshape2', 'rmarkdown', 'rsqlite', 'shiny', 'tidyverse','rpy2'), repos='https://cloud.r-project.org')"
+
+RUN Rscript -e "install.packages(c('caret', 'crayon', 'devtools', 'forecast', 'hexbin', 'htmltools', 'htmlwidgets', 'plyr', 'reshape2', 'rmarkdown', 'shiny', 'tidyverse', 'IRkernel'), repos='https://cloud.r-project.org')"
+RUN Rscript -e "IRkernel::installspec()"
 
 # Switch back to jovyan to avoid accidental container runs as root
 USER $NB_UID
