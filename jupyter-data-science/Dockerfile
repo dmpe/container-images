@@ -17,8 +17,8 @@ RUN (set -e; \
         tig pandoc python3-devel tzdata unzip nano tcl tk gfortran gcc-gfortran;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
     python3 -m pip install numpy scipy matplotlib ipython pandas sympy nose \
-        beautifulsoup4 bokeh cloudpickle cython dask dill ipywidgets matplotlib numba \
-        numexpr patsy protobuf scikit-image scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
+        beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib numba \
+        numexpr patsy protobuf fds.analyticsapi.engines scikit-image scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
         openpyxl xlsxwriter notebook jupyterhub jupyterlab;\
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     yum install -y yarn nodejs ;\
@@ -45,6 +45,10 @@ RUN (set -e; \
     pkg install -forge linear-algebra  ;\
     pkg load linear-algebra ;\
 )
+
+RUN curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz && \
+    tar zxvf blpapi_cpp_3.12.3.1-linux.tar.gz && export BLPAPI_ROOT=~/blpapi_cpp_3.12.3.1 && \
+    pip install --index-url=https://bloomberg.bintray.com/pip/simple blpapi
 
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8 \
@@ -126,6 +130,7 @@ RUN (set -e; \
     # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
     jupyter labextension install @jupyter-widgets/jupyterlab-manager@^1.0.1 --no-build; \
     jupyter labextension install jupyterlab_bokeh --no-build; \
+    jupyter serverextension enable jupyterlab_sql --py --sys-prefix \
     jupyter lab build; \
     npm cache clean --force; \
     rm -rf /home/$NB_USER/.cache/yarn;\
@@ -137,7 +142,7 @@ RUN chmod -R 777 /usr/share/doc/R
 RUN export LANG=en_US.UTF-8 \
     export LC_ALL=en_US.UTF-8
 
-RUN Rscript -e "install.packages(c('caret', 'crayon', 'devtools', 'forecast', 'hexbin', 'htmltools', 'htmlwidgets', 'plyr', 'reshape2', 'rmarkdown', 'shiny', 'tidyverse', 'IRkernel'), repos='https://cloud.r-project.org')"
+RUN Rscript -e "install.packages(c('caret', 'crayon', 'devtools', 'forecast', 'hexbin', 'htmltools', 'htmlwidgets', 'plyr', 'reshape2', 'rmarkdown', 'shiny', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
 RUN Rscript -e "IRkernel::installspec()"
 
 # Switch back to jovyan to avoid accidental container runs as root
