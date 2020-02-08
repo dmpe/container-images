@@ -23,12 +23,14 @@ stages:
     - task: Docker@2
       displayName: Build an image
       inputs:
-        command: build
-        dockerfile: '$(Build.SourcesDirectory)/jupyter-data-science/Dockerfile'
-        tags: |
-          $(tag)
+        containerRegistry: 'Quay'
+        repository: 'dmpe/container-repo'
+        command: 'build'
+        Dockerfile: '$(Build.SourcesDirectory)/jupyter-data-science/Dockerfile'
+        tags: latest
     - task: Docker@2
       inputs:
         containerRegistry: 'Quay'
-        repository: 'quay.io/dmpe/container-repo'
+        repository: 'dmpe/container-repo'
         command: 'push'
+        tags: 'latest'
