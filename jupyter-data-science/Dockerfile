@@ -13,10 +13,10 @@ RUN (set -ex ;\
     dnf groupinstall -y "Development Tools" "Development Libraries"; \
 )
 RUN (set -e; \
-    dnf install -y R R-devel czmq-devel boost-devel QuantLib bash-completion python*-networkx git tree mlocate jq bzip2 libicu-devel \
-                   liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget octave octave-devel gnuplot \
-                   graphviz graphviz-devel cairo-devel libjpeg-devel giflib-devel librsvg2-devel \
-                   tig pandoc python3-devel tzdata unzip nano tcl tk gfortran gcc-gfortran compat-openssl10 unixodbc-devel ;\
+    dnf install -y R R-devel czmq-devel boost-devel QuantLib bash-completion python*-networkx tree mlocate jq bzip2 \
+                   liberation-fonts dejavu-fonts-common icu4j-localespi wget octave octave-devel gnuplot \
+                   graphviz-devel cairo-devel libjpeg-devel giflib-devel librsvg2-devel \
+                   tig pandoc nano tcl tk gfortran gcc-gfortran compat-openssl10 unixODBC-devel;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
     python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas bqplot \
         beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib \
