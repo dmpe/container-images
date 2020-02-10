@@ -39,7 +39,7 @@ ENV LC_ALL=en_US.UTF-8 \
     NB_GID=$NB_GID \
     BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1 \
     HOME=/home/$NB_USER \
-    TINI_VERSION v0.18.0
+    TINI_VERSION=v0.18.0
     
 RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
