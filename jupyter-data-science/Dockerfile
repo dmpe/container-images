@@ -10,26 +10,26 @@ USER root
 RUN (set -ex ;\ 
     dnf update -y; \
     dnf upgrade -y; \
-    dnf groupinstall "Development Tools" "Development Libraries" -y; \
+    dnf groupinstall -y "Development Tools" "Development Libraries"; \
 )
 RUN (set -e; \
-    dnf install -y R R-devel czmq-devel python*-networkx git tree mlocate jq bzip2 liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget octave octave-devel \
-        tig pandoc python3-devel boost-devel tzdata unzip nano tcl tk gfortran gcc-gfortran compat-openssl10;\
+    dnf install -y R R-devel czmq-devel boost-devel QuantLib bash-completion python*-networkx git tree mlocate jq bzip2 libicu-devel \
+                   liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget octave octave-devel gnuplot \
+                   graphviz libgraphviz-devel cairo-devel libpango1.0-devel libjpeg-devel libgif-devel librsvg2-devel \
+                   tig pandoc python3-devel tzdata unzip nano tcl tk gfortran gcc-gfortran compat-openssl10 unixodbc-dev ;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
-    python3 -m pip install numpy scipy matplotlib ipython pandas sympy nose \
-        beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib numba \
-        numexpr patsy protobuf fds.analyticsapi.engines scikit-image scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
-        openpyxl xlsxwriter notebook jupyterhub jupyterlab;\
+    python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas \
+        beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib \
+        numexpr protobuf fds.analyticsapi.engines scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
+        openpyxl xlsxwriter jupyterlab-git jupyterlab-commenting-service;\
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
-    yum install -y yarn nodejs ;\
+    dnf install -y yarn nodejs ;\
 )
 
-RUN cd /tmp && curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz  && \ 
+RUN cd /tmp && curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz && \ 
      tar zxvf blpapi_cpp_3.12.3.1-linux.tar.gz && ls -al
 
 RUN export BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1
-ENV BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1
-RUN pip install --index-url=https://bloomberg.bintray.com/pip/simple blpapi
 
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8 \
@@ -37,13 +37,16 @@ ENV LC_ALL=en_US.UTF-8 \
     NB_USER=$NB_USER \
     NB_UID=$NB_UID \
     NB_GID=$NB_GID \
-    HOME=/home/$NB_USER
-
-RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
-RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
-RUN export LANG=en_US.UTF-8 \
-    export LC_ALL=en_US.UTF-8
+    BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1 \
+    HOME=/home/$NB_USER \
+    TINI_VERSION v0.18.0
+    
+RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment && \
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+    echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
+    export LANG=en_US.UTF-8 && \
+    export LC_ALL=en_US.UTF-8 && \
+    pip install --index-url=https://bloomberg.bintray.com/pip/simple blpapi && rm -rf /tmp/blpapi_cpp_3.12.3.1-linux.tar.gz && rm -rf /tmp/blpapi_cpp_3.12.3.1
 
 # Copy a script that we will use to correct permissions after running certain commands
 COPY fix-permissions /usr/local/bin/fix-permissions
@@ -61,7 +64,6 @@ RUN echo "auth requisite pam_deny.so" >> /etc/pam.d/su && \
     chmod g+w /etc/passwd && \
     fix-permissions $HOME
 
-ENV TINI_VERSION v0.18.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/local/bin/tini
 RUN chmod +x /usr/local/bin/tini
 
@@ -70,11 +72,9 @@ RUN mkdir /home/$NB_USER/work && \
     mkdir /home/$NB_USER/.jupyter && \
     echo "cacert=/etc/ssl/certs/ca-certificates.crt" > /home/$NB_USER/.curlrc
 WORKDIR $HOME
-RUN chown -R $NB_USER:users /home/$NB_USER/.jupyter
-
-RUN npm cache clean --force && \
-    jupyter notebook --generate-config && \
-    fix-permissions /home/$NB_USER
+RUN chown -R $NB_USER:users /home/$NB_USER/.jupyter && \
+    npm cache clean --force && \
+    jupyter notebook --generate-config
 
 # Copy local files as late as possible to avoid cache busting
 COPY start.sh /usr/local/bin/
@@ -101,10 +101,15 @@ RUN (set -e; \
     # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
     jupyter labextension install @jupyter-widgets/jupyterlab-manager@^1.0.1 --no-build; \
     jupyter labextension install jupyterlab_bokeh --no-build; \
+    jupyter serverextension enable --py jupyterlab_git; \
+    jupyter labextension install @jupyterlab/git; \
+    jupyter labextension install @jupyterlab/dataregistry-extension; \
+    jupyter labextension install @jupyterlab/shortcutui; \
+    jupyter labextension install @jupyterlab/commenting-extension; \
     jupyter serverextension enable jupyterlab_sql --py --sys-prefix; \
     jupyter lab build; \
     npm cache clean --force; \
-    rm -rf /home/$NB_USER/.cache/yarn;\
+    rm -rf /home/$NB_USER/.cache/yarn; \
     rm -rf /home/$NB_USER/.node-gyp; \
     fix-permissions /home/$NB_USER; \
 )
@@ -113,9 +118,9 @@ RUN mkdir -p /usr/share/doc/R/html/ && chmod -R 777 /usr/share/doc/R
 # Import matplotlib the first time to build the font cache.
 ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
 RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
-  fix-permissions /home/$NB_USER
+    fix-permissions /home/$NB_USER
 
-RUN Rscript -e "install.packages(c('caret', 'RQuantLib', 'devtools', 'htmltools', 'htmlwidgets', 'rmarkdown', 'shiny', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
+RUN Rscript -e "install.packages(c('caret', 'RQuantLib', 'devtools', 'htmltools', 'htmlwidgets', 'rmarkdown', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
 RUN Rscript -e "IRkernel::installspec()"
 
 # Switch back to jovyan to avoid accidental container runs as root
@@ -123,6 +128,5 @@ USER $NB_UID
 RUN echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
 
 EXPOSE 8888
-# Configure container startup
 ENTRYPOINT ["/usr/local/bin/tini", "-g", "--"]
 CMD ["start-notebook.sh"]
