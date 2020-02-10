@@ -14,7 +14,7 @@ RUN (set -ex ;\
 )
 RUN (set -e; \
     dnf install -y R R-devel czmq-devel python*-networkx git tree mlocate jq bzip2 liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget octave octave-devel \
-        tig pandoc python3-devel boost-devel tzdata unzip nano tcl tk gfortran gcc-gfortran;\
+        tig pandoc python3-devel boost-devel tzdata unzip nano tcl tk gfortran gcc-gfortran compat-openssl10;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
     python3 -m pip install numpy scipy matplotlib ipython pandas sympy nose \
         beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib numba \
