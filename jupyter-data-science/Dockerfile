@@ -19,9 +19,9 @@ RUN (set -e; \
                    tig pandoc nano tcl tk gfortran gcc-gfortran compat-openssl10 unixODBC-devel;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
     python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas bqplot \
-        beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib \
+        beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql psutil ipywidgets matplotlib \
         numexpr protobuf fds.analyticsapi.engines scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
-        openpyxl xlsxwriter jupyterlab-git jupyterlab-commenting-service ipympl;\
+        openpyxl xlsxwriter jupyter_bokeh jupyterlab-git jupyterlab-commenting-service ipympl;\
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     dnf install -y yarn nodejs ;\
 )
@@ -100,15 +100,16 @@ RUN (set -e; \
     # Check this URL for most recent compatibilities
     # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
     jupyter labextension install @jupyter-widgets/jupyterlab-manager@^1.0.1 --no-build; \
-    jupyter labextension install jupyterlab_bokeh --no-build; \
+    jupyter labextension install @bokeh/jupyter_bokeh --no-build; \
+    jupyter labextension install @jupyterlab/git --no-build; \
     jupyter serverextension enable --py jupyterlab_git; \
-    jupyter labextension install @jupyterlab/git; \
-    jupyter labextension install @jupyterlab/plotly-extension; \
-    jupyter labextension install bqplot; \
-    jupyter labextension install jupyter-matplotlib;\
-    jupyter labextension install @jupyterlab/dataregistry-extension; \
-    jupyter labextension install @jupyterlab/shortcutui; \
-    jupyter labextension install @jupyterlab/commenting-extension; \
+    jupyter labextension install plotlywidget --no-build; \
+    jupyter labextension install @jupyterlab/plotly-extension --no-build; \
+    jupyter labextension install bqplot --no-build; \
+    jupyter labextension install jupyter-matplotlib --no-build;\
+    jupyter labextension install @jupyterlab/dataregistry-extension --no-build; \
+    jupyter labextension install @jupyterlab/shortcutui --no-build; \
+    jupyter labextension install @jupyterlab/commenting-extension --no-build; \
     jupyter serverextension enable jupyterlab_sql --py --sys-prefix; \
     jupyter lab build; \
     npm cache clean --force; \
