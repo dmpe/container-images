@@ -15,13 +15,13 @@ RUN (set -ex ;\
 RUN (set -e; \
     dnf install -y R R-devel czmq-devel boost-devel QuantLib bash-completion python*-networkx git tree mlocate jq bzip2 libicu-devel \
                    liberation-fonts dejavu-fonts-common icu4j-localespi libicu wget octave octave-devel gnuplot \
-                   graphviz libgraphviz-devel cairo-devel libpango1.0-devel libjpeg-devel libgif-devel librsvg2-devel \
-                   tig pandoc python3-devel tzdata unzip nano tcl tk gfortran gcc-gfortran compat-openssl10 unixodbc-dev ;\
+                   graphviz graphviz-devel cairo-devel libjpeg-devel giflib-devel librsvg2-devel \
+                   tig pandoc python3-devel tzdata unzip nano tcl tk gfortran gcc-gfortran compat-openssl10 unixodbc-devel ;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
-    python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas \
+    python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas bqplot \
         beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql ipywidgets matplotlib \
         numexpr protobuf fds.analyticsapi.engines scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
-        openpyxl xlsxwriter jupyterlab-git jupyterlab-commenting-service;\
+        openpyxl xlsxwriter jupyterlab-git jupyterlab-commenting-service ipympl;\
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     dnf install -y yarn nodejs ;\
 )
@@ -103,6 +103,9 @@ RUN (set -e; \
     jupyter labextension install jupyterlab_bokeh --no-build; \
     jupyter serverextension enable --py jupyterlab_git; \
     jupyter labextension install @jupyterlab/git; \
+    jupyter labextension install @jupyterlab/plotly-extension; \
+    jupyter labextension install bqplot; \
+    jupyter labextension install jupyter-matplotlib;\
     jupyter labextension install @jupyterlab/dataregistry-extension; \
     jupyter labextension install @jupyterlab/shortcutui; \
     jupyter labextension install @jupyterlab/commenting-extension; \
