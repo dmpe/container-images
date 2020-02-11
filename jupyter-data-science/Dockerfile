@@ -18,12 +18,14 @@ RUN (set -e; \
                    graphviz-devel cairo-devel libjpeg-devel giflib-devel librsvg2-devel \
                    tig pandoc nano tcl tk gfortran gcc-gfortran compat-openssl10 unixODBC-devel;\
     curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
-    python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas bqplot \
-        beautifulsoup4 bokeh cloudpickle cython dask dill jupyterlab_sql psutil ipywidgets matplotlib \
-        numexpr protobuf fds.analyticsapi.engines scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
+    python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas bqplot octave_kernel bash_kernel \
+        beautifulsoup4 bokeh cloudpickle cython dask jupytext jupyterlab_sql psutil ipywidgets matplotlib \
+        numexpr protobuf ipysheet fds.analyticsapi.engines nbresuse nbdime scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
         openpyxl xlsxwriter jupyter_bokeh jupyterlab-git jupyterlab-commenting-service ipympl;\
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     dnf install -y yarn nodejs ;\
+    python3 -m bash_kernel.install; \
+    python3 -m octave_kernel.install; \
 )
 
 RUN cd /tmp && curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz && \ 
@@ -45,7 +47,7 @@ RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
     echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
     export LANG=en_US.UTF-8 && \
-    export LC_ALL=en_US.UTF-8 && \
+    export LC_ALL=C && \
     pip install --index-url=https://bloomberg.bintray.com/pip/simple blpapi && rm -rf /tmp/blpapi_cpp_3.12.3.1-linux.tar.gz && rm -rf /tmp/blpapi_cpp_3.12.3.1
 
 # Copy a script that we will use to correct permissions after running certain commands
@@ -106,7 +108,11 @@ RUN (set -e; \
     jupyter labextension install plotlywidget --no-build; \
     jupyter labextension install @jupyterlab/plotly-extension --no-build; \
     jupyter labextension install bqplot --no-build; \
-    jupyter labextension install jupyter-matplotlib --no-build;\
+    jupyter labextension install jupyterlab-jupytext --no-build; \
+    jupyter labextension install jupyter-matplotlib --no-build; \
+    jupyter labextension install @jupyterlab/toc --no-build;\
+    jupyter labextension install jupyterlab-spreadsheet --no-build;\
+    jupyter labextension install ipysheet --no-build;\
     jupyter labextension install @jupyterlab/dataregistry-extension --no-build; \
     jupyter labextension install @jupyterlab/shortcutui --no-build; \
     jupyter labextension install @jupyterlab/commenting-extension --no-build; \
