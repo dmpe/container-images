@@ -69,7 +69,7 @@ ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/
 RUN chmod +x /usr/local/bin/tini
 
 USER $NB_UID
-RUN mkdir /home/$NB_USER/work && \
+RUN export LC_ALL=C && mkdir /home/$NB_USER/work && \
     mkdir /home/$NB_USER/.jupyter && \
     echo "cacert=/etc/ssl/certs/ca-certificates.crt" > /home/$NB_USER/.curlrc
 WORKDIR $HOME
@@ -86,12 +86,11 @@ COPY jupyter_notebook_config.py /etc/jupyter/
 # Fix permissions on /etc/jupyter as root
 USER root
 RUN fix-permissions /etc/jupyter/
-RUN cd /tmp && \
+RUN export LC_ALL=C && cd /tmp && \
     git clone https://github.com/PAIR-code/facets.git && \
     cd facets && \
     jupyter nbextension install facets-dist/ --sys-prefix && \
-    cd && \
-    rm -rf /tmp/facets && \
+    cd && rm -rf /tmp/facets && \
     fix-permissions /home/$NB_USER
 
 # Activate ipywidgets extension in the environment that runs the notebook server
@@ -130,11 +129,13 @@ RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
     fix-permissions /home/$NB_USER
 
 RUN Rscript -e "install.packages(c('caret', 'RQuantLib', 'devtools', 'htmltools', 'htmlwidgets', 'rmarkdown', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
-RUN Rscript -e "IRkernel::installspec()"
 
 # Switch back to jovyan to avoid accidental container runs as root
 USER $NB_UID
-RUN echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
+RUN export LC_ALL=C && echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
+
+# R Kernel must be installed locally, not with root
+RUN Rscript -e "IRkernel::installspec()"
 
 EXPOSE 8888
 ENTRYPOINT ["/usr/local/bin/tini", "-g", "--"]
