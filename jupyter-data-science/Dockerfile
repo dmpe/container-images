@@ -25,7 +25,6 @@ RUN (set -e; \
     curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
     dnf install -y yarn nodejs ;\
     python3 -m bash_kernel.install; \
-    python3 -m octave_kernel.install; \
 )
 
 RUN cd /tmp && curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz && \ 
