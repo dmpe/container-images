@@ -7,7 +7,7 @@ ARG NB_GID="100"
 
 USER root
 
-RUN (set -ex ;\ 
+RUN (set -e; \ 
     dnf update -y; \
     dnf upgrade -y; \
     dnf groupinstall -y "Development Tools" "Development Libraries"; \
@@ -122,20 +122,21 @@ RUN (set -e; \
     fix-permissions /home/$NB_USER; \
 )
 
-RUN mkdir -p /usr/share/doc/R/html/ && chmod -R 777 /usr/share/doc/R
 # Import matplotlib the first time to build the font cache.
+# A new RUN because installing R packages takes a long time
 ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
-RUN MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
-    fix-permissions /home/$NB_USER
-
-RUN Rscript -e "install.packages(c('caret', 'RQuantLib', 'devtools', 'htmltools', 'htmlwidgets', 'rmarkdown', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
+RUN export LC_ALL=C && mkdir -p /usr/share/doc/R/html/ && \ 
+    chmod -R 777 /usr/share/doc/R && \
+    MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
+    fix-permissions /home/$NB_USER && \
+    Rscript -e "install.packages(c('caret', 'RQuantLib', 'rmarkdown', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
 
 # Switch back to jovyan to avoid accidental container runs as root
-USER $NB_UID
-RUN export LC_ALL=C && echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
-
 # R Kernel must be installed locally, not with root
-RUN Rscript -e "IRkernel::installspec()"
+USER $NB_UID
+RUN export LC_ALL=C && \ 
+    echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc && \
+    Rscript -e "IRkernel::installspec()"
 
 EXPOSE 8888
 ENTRYPOINT ["/usr/local/bin/tini", "-g", "--"]
