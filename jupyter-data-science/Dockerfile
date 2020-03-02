@@ -1,60 +1,71 @@
 FROM fedora:latest
-
 LABEL maintainer="dmpe <cincenko@outlook.com>"
+ARG ALM_DOCKER_REG
+
+ARG ALM_VCS_REF
+LABEL org.label-schema.schema-version="2.0" \
+      org.label-schema.name="Data Science Notebook - fedora" \
+      org.label-schema.vendor="DevOps" \
+      org.label-schema.description="datascience-notebook-fedora" \
+      org.label-schema.version="2.0"
+
 ARG NB_USER="jovyan"
 ARG NB_UID="1000"
 ARG NB_GID="100"
 
 USER root
 
-RUN (set -e; \ 
-    dnf update -y; \
+# Carefull: Oracle modifies URL and appends "x86_64" in the middle which is not visible on
+# https://yum.oracle.com/repo/OracleLinux/OL7/oracle/instantclient/x86_64/index.html
+RUN (set -e; \
     dnf upgrade -y; \
     dnf groupinstall -y "Development Tools" "Development Libraries"; \
-)
+    dnf install -y python3-pip libnsl libaio; \
+    cd /tmp; \
+    curl -k -LOJ http://yum.oracle.com/repo/OracleLinux/OL7/oracle/instantclient/x86_64/getPackage/oracle-instantclient19.5-basic-19.5.0.0.0-1.x86_64.rpm; \
+    dnf install -y /tmp/oracle-instantclient19.5-basic-19.5.0.0.0-1.x86_64.rpm; \
+  )
+
+COPY fix-permissions /usr/local/bin/fix-permissions
+
 RUN (set -e; \
+    update-ca-trust; \
     dnf install -y R R-devel czmq-devel boost-devel QuantLib bash-completion python*-networkx tree mlocate jq bzip2 \
                    liberation-fonts dejavu-fonts-common icu4j-localespi wget octave octave-devel gnuplot \
-                   graphviz-devel cairo-devel libjpeg-devel giflib-devel librsvg2-devel \
-                   tig pandoc nano tcl tk gfortran gcc-gfortran compat-openssl10 unixODBC-devel;\
-    curl -sL https://rpm.nodesource.com/setup_13.x | bash - ; \
-    python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas bqplot octave_kernel bash_kernel \
-        beautifulsoup4 bokeh cloudpickle cython dask jupytext jupyterlab_sql psutil ipywidgets matplotlib \
-        numexpr protobuf ipysheet fds.analyticsapi.engines nbresuse nbdime scikit-learn seaborn sqlalchemy statsmodels vincent xlrd \
-        openpyxl xlsxwriter jupyter_bokeh jupyterlab-git jupyterlab-commenting-service ipympl;\
-    curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo ;\
-    dnf install -y yarn nodejs ;\
-    python3 -m bash_kernel.install; \
+                   graphviz-devel cairo-devel libjpeg-devel giflib-devel librsvg2-devel nodejs \
+                   tig pandoc nano gfortran gcc-gfortran unixODBC-devel \
+                   texlive-scheme-basic texlive-collection-latexextra; \
 )
 
-RUN cd /tmp && curl -k -LOJ https://bloomberg.bintray.com/BLPAPI-Stable-Generic/blpapi_cpp_3.12.3.1-linux.tar.gz && \ 
-     tar zxvf blpapi_cpp_3.12.3.1-linux.tar.gz && ls -al
+RUN (set -e; \
+    python3 -m pip install numpy scipy ipython notebook jupyterhub jupyterlab pandas bqplot octave_kernel bash_kernel \
+        beautifulsoup4 bokeh cloudpickle cython jupytext jupyterlab_sql psutil ipywidgets matplotlib \
+        numexpr protobuf ipysheet fds.analyticsapi.engines nbresuse nbdime scikit-learn seaborn sqlalchemy \
+        statsmodels vincent xlrd openpyxl xlsxwriter jupyter_bokeh jupyterlab-git ipympl cx_Oracle ;\
+    python3 -m bash_kernel.install; \
+    dnf clean all; \
+)
 
-RUN export BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1
+# A must; sets yarn configuration; as a test check .yarnrc
+RUN (set -e; \
+    git config --system credential.helper store; \
+    npm config set strict-ssl false; \
+    npm install -g node-gyp-build node-gyp yarn; \
+    echo "ulimit -c 0 > /dev/null 2>&1" > /etc/profile.d/disable-coredumps.sh;\
+    yarn config set "strict-ssl" false; \
+)
 
-ENV LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8 \
-    NB_USER=$NB_USER \
+ENV NB_USER=$NB_USER \
     NB_UID=$NB_UID \
     NB_GID=$NB_GID \
-    BLPAPI_ROOT=/tmp/blpapi_cpp_3.12.3.1 \
     HOME=/home/$NB_USER \
-    TINI_VERSION=v0.18.0
-    
-RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment && \
-    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
-    echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
-    export LANG=en_US.UTF-8 && \
-    export LC_ALL=C && \
-    pip install --index-url=https://bloomberg.bintray.com/pip/simple blpapi && rm -rf /tmp/blpapi_cpp_3.12.3.1-linux.tar.gz && rm -rf /tmp/blpapi_cpp_3.12.3.1
+    TINI_VERSION=v0.18.0 \
+    LD_LIBRARY_PATH=/usr/lib/oracle/19.5/client64/lib:$LD_LIBRARY_PATH
 
 # Copy a script that we will use to correct permissions after running certain commands
-COPY fix-permissions /usr/local/bin/fix-permissions
-RUN chmod a+rx /usr/local/bin/fix-permissions
-
 # Enable prompt color in the skeleton .bashrc before creating the default NB_USER
-RUN sed -i 's/^#force_color_prompt=yes/force_color_prompt=yes/' /etc/skel/.bashrc
+RUN chmod a+rx /usr/local/bin/fix-permissions && \
+    sed -i 's/^#force_color_prompt=yes/force_color_prompt=yes/' /etc/skel/.bashrc
 
 # Create NB_USER wtih name jovyan user with UID=1000 and in the 'users' group
 # and make sure these dirs are writable by the `users` group.
@@ -62,18 +73,21 @@ RUN echo "auth requisite pam_deny.so" >> /etc/pam.d/su && \
     sed -i.bak -e 's/^%admin/#%admin/' /etc/sudoers && \
     sed -i.bak -e 's/^%sudo/#%sudo/' /etc/sudoers && \
     useradd -m -s /bin/bash -N -u $NB_UID $NB_USER && \
-    chmod g+w /etc/passwd && \
+    curl -LJ https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini --output /usr/local/bin/tini && \
+    chmod +x /usr/local/bin/tini && \
+    cd /tmp && \
+    curl -LOJ https://github.com/PAIR-code/facets/archive/master.zip && \
+    unzip facets-master.zip && cd facets-master && \
+    jupyter nbextension install facets-dist/ --sys-prefix && \
+    cd && rm -rf /tmp/facets && \
     fix-permissions $HOME
 
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/local/bin/tini
-RUN chmod +x /usr/local/bin/tini
-
 USER $NB_UID
-RUN export LC_ALL=C && mkdir /home/$NB_USER/work && \
-    mkdir /home/$NB_USER/.jupyter && \
-    echo "cacert=/etc/ssl/certs/ca-certificates.crt" > /home/$NB_USER/.curlrc
 WORKDIR $HOME
-RUN chown -R $NB_USER:users /home/$NB_USER/.jupyter && \
+RUN mkdir /home/$NB_USER/work && \
+    mkdir /home/$NB_USER/.jupyter && \
+    echo "cacert=/etc/pki/tls/certs/ca-certificates.crt" > /home/$NB_USER/.curlrc && \
+    chown -R $NB_USER:users /home/$NB_USER/.jupyter && \
     npm cache clean --force && \
     jupyter notebook --generate-config
 
@@ -83,23 +97,16 @@ COPY start-notebook.sh /usr/local/bin/
 COPY start-singleuser.sh /usr/local/bin/
 COPY jupyter_notebook_config.py /etc/jupyter/
 
-# Fix permissions on /etc/jupyter as root
-USER root
-RUN fix-permissions /etc/jupyter/
-RUN export LC_ALL=C && cd /tmp && \
-    git clone https://github.com/PAIR-code/facets.git && \
-    cd facets && \
-    jupyter nbextension install facets-dist/ --sys-prefix && \
-    cd && rm -rf /tmp/facets && \
-    fix-permissions /home/$NB_USER
-
 # Activate ipywidgets extension in the environment that runs the notebook server
-RUN (set -e; \ 
+USER root
+RUN (set -e; \
+    npm config set strict-ssl false; \
+    yarn config set "strict-ssl" false; \
     jupyter nbextension enable --py widgetsnbextension --sys-prefix; \
     # Also activate ipywidgets extension for JupyterLab
     # Check this URL for most recent compatibilities
     # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
-    jupyter labextension install @jupyter-widgets/jupyterlab-manager@^1.0.1 --no-build; \
+    jupyter labextension install @jupyter-widgets/jupyterlab-manager --no-build; \
     jupyter labextension install @bokeh/jupyter_bokeh --no-build; \
     jupyter labextension install @jupyterlab/git --no-build; \
     jupyter serverextension enable --py jupyterlab_git; \
@@ -113,30 +120,39 @@ RUN (set -e; \
     jupyter labextension install ipysheet --no-build;\
     jupyter labextension install @jupyterlab/dataregistry-extension --no-build; \
     jupyter labextension install @jupyterlab/shortcutui --no-build; \
-    jupyter labextension install @jupyterlab/commenting-extension --no-build; \
     jupyter serverextension enable jupyterlab_sql --py --sys-prefix; \
     jupyter lab build; \
     npm cache clean --force; \
     rm -rf /home/$NB_USER/.cache/yarn; \
     rm -rf /home/$NB_USER/.node-gyp; \
-    fix-permissions /home/$NB_USER; \
+    fix-permissions /etc/jupyter/; \
+    rm -rf /tmp/*; \
 )
 
 # Import matplotlib the first time to build the font cache.
 # A new RUN because installing R packages takes a long time
-ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
-RUN export LC_ALL=C && mkdir -p /usr/share/doc/R/html/ && \ 
-    chmod -R 777 /usr/share/doc/R && \
-    MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
-    fix-permissions /home/$NB_USER && \
-    Rscript -e "install.packages(c('caret', 'RQuantLib', 'rmarkdown', 'tidyverse', 'IRkernel', 'factset.analyticsapi.engines'), repos='https://cloud.r-project.org')"
+ENV XDG_CACHE_HOME=/home/$NB_USER/.cache/ \
+    R_LIBS_USER=/home/jovyan/R/x86_64-redhat-linux-gnu-library/3.6
 
-# Switch back to jovyan to avoid accidental container runs as root
-# R Kernel must be installed locally, not with root
-USER $NB_UID
-RUN export LC_ALL=C && \ 
-    echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc && \
-    Rscript -e "IRkernel::installspec()"
+RUN mkdir -p /usr/share/doc/R/html/ && \
+    chmod -R 777 /usr/share/doc/R  && \
+    MPLBACKEND=Agg python3 -c "import matplotlib.pyplot" && \
+    Rscript -e 'options(download.file.method = "libcurl")' && \
+    Rscript -e "install.packages(c('httr','rmarkdown', 'IRkernel', 'factset.analyticsapi.engines'))" && \
+    Rscript -e "IRkernel::installspec(user=FALSE)" && \
+    mkdir -p /home/jovyan/.local/lib/python3.7/site-packages && \
+    mkdir -p /home/jovyan/R/x86_64-redhat-linux-gnu-library/3.6 && \
+    fix-permissions /home/$NB_USER
+
+USER $NB_USER
+RUN echo 'graphics_toolkit ("gnuplot")' >> ~/.octaverc
+
+ENV CURL_CA_BUNDLE=/etc/pki/tls/certs/ca-certificates.crt \
+    GIT_SSL_CAINFO=/usr/share/pki/ca-trust-source/ca-certificates.crt \
+    LD_LIBRARY_PATH=/usr/lib/oracle/19.5/client64/lib:$LD_LIBRARY_PATH \
+    PYTHONPATH=$PYTHONPATH:/home/jovyan/.local/lib/python3.7/site-packages \
+    PATH=$PATH:/home/jovyan/.local/bin \
+    EDITOR=nano
 
 EXPOSE 8888
 ENTRYPOINT ["/usr/local/bin/tini", "-g", "--"]
